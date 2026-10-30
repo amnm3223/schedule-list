@@ -1,1 +1,578 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>きょうのよてい - スケジュールをつくろう</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font (M PLUS Rounded 1c) -->
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background-color: #f0f7ff;
+            touch-action: manipulation;
+        }
 
+        /* 印刷設定 */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .main-container {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+            .schedule-panel {
+                width: 100% !important;
+            }
+        }
+
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* チェックボックスのアニメーション */
+        .custom-checkbox:checked + div {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen p-2 md:p-4 bg-amber-50/50">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- ヘッダー（印刷非表示） -->
+        <header class="no-print mb-3 flex flex-wrap justify-between items-center bg-white p-3 md:p-4 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-500 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid fa-calendar-check text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold text-slate-800">きょうのよていをつくろう</h1>
+                    <p class="text-xs md:text-sm text-slate-500">カードをえらんで、スケジュールをつくるアプリ</p>
+                </div>
+            </div>
+
+            <!-- 操作ボタン群 -->
+            <div class="flex items-center gap-2 mt-2 sm:mt-0">
+                <button id="reset-btn" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs md:text-sm transition flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-rotate-left"></i> さいしょから
+                </button>
+                <button id="print-btn" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-xs md:text-sm transition flex items-center gap-1.5 shadow-md">
+                    <i class="fa-solid fa-print"></i> いんさつ
+                </button>
+            </div>
+        </header>
+
+        <!-- メイン画面グリッド -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+            
+            <!-- 【左側】カードをえらぶエリア（印刷非表示） -->
+            <section class="no-print lg:col-span-6 xl:col-span-7 bg-white rounded-3xl p-4 md:p-5 shadow-sm border-2 border-blue-100 flex flex-col h-[calc(100vh-140px)] min-h-[550px]">
+                
+                <!-- 見出し & 表記切り替え -->
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                    <div>
+                        <span class="inline-block bg-blue-100 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-bold mb-1">1</span>
+                        <h2 class="text-lg md:text-xl font-bold text-slate-800 inline ml-1">カードをえらぶ</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">タップすると、よていに追加されます</p>
+                    </div>
+
+                    <!-- ひらがな / 漢字 切り替え -->
+                    <div class="flex bg-slate-100 p-1 rounded-xl font-bold text-xs">
+                        <button id="btn-hiragana" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white shadow-sm transition">ひらがな</button>
+                        <button id="btn-kanji" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">漢字</button>
+                    </div>
+                </div>
+
+                <!-- カテゴリタブ -->
+                <div class="flex gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-none" id="category-tabs">
+                    <!-- JSで動的生成 -->
+                </div>
+
+                <!-- カードグリッド（スクロール可能） -->
+                <div class="flex-1 overflow-y-auto pr-1">
+                    <div id="card-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                        <!-- JSで動的生成 -->
+                    </div>
+                </div>
+
+                <!-- カスタム項目追加フォーム -->
+                <div class="mt-3 pt-3 border-t border-slate-100">
+                    <details class="text-xs text-slate-500">
+                        <summary class="cursor-pointer font-bold text-blue-600 hover:underline flex items-center gap-1">
+                            <i class="fa-solid fa-plus-circle"></i> じぶんであたらしくカードをつくる
+                        </summary>
+                        <form id="custom-card-form" class="mt-2 flex gap-2">
+                            <input type="text" id="custom-title" placeholder="なまえ (例: おそうじ)" required class="flex-1 px-3 py-1.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <select id="custom-icon" class="px-2 py-1.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                <option value="fa-star">⭐ つき</option>
+                                <option value="fa-broom">🧹 そうじ</option>
+                                <option value="fa-gamepad">🎮 あそび</option>
+                                <option value="fa-bus">🚌 バス</option>
+                                <option value="fa-heart">❤️ はーと</option>
+                            </select>
+                            <button type="submit" class="bg-blue-500 text-white px-3 py-1.5 rounded-xl font-bold hover:bg-blue-600 transition">つくる</button>
+                        </form>
+                    </details>
+                </div>
+            </section>
+
+            <!-- 【右側】きょうのよてい（スケジュール表示エリア） -->
+            <section class="schedule-panel lg:col-span-6 xl:col-span-5 bg-white rounded-3xl p-4 md:p-5 shadow-sm border-2 border-emerald-100 flex flex-col min-h-[550px]">
+                
+                <!-- ヘッダー (日付) -->
+                <div class="flex justify-between items-center pb-3 mb-3 border-b-2 border-slate-100">
+                    <div>
+                        <h2 class="text-xl md:text-2xl font-black text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-emerald-500"></i>
+                            きょうのよてい
+                        </h2>
+                    </div>
+                    <div class="text-right">
+                        <div id="current-date" class="text-sm md:text-base font-bold text-slate-700"></div>
+                    </div>
+                </div>
+
+                <!-- スケジュールリスト -->
+                <div id="schedule-list" class="flex-1 space-y-2.5 overflow-y-auto pr-1 min-h-[350px]">
+                    <!-- JSで動的生成されるスケジュールアイテム -->
+                </div>
+
+                <!-- 空の状態のヒント -->
+                <div id="empty-state" class="hidden flex-1 flex flex-col items-center justify-center text-slate-300 py-12">
+                    <i class="fa-solid fa-hand-pointer text-5xl mb-3 animate-bounce"></i>
+                    <p class="font-bold text-slate-400">ひだりのカードをえらんでね！</p>
+                </div>
+
+                <!-- 下部サマリー -->
+                <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500 no-print">
+                    <span id="item-count">ぜんぶで 0 こ</span>
+                    <span class="text-amber-600"><i class="fa-solid fa-lightbulb"></i> じかんや チェックを入れることができるよ</span>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- JavaScript ロジック -->
+    <script>
+        // --- データ定義 ---
+        const CATEGORIES = [
+            { id: 'all', labelHiragana: 'すべて', labelKanji: 'すべて', color: 'bg-slate-100 text-slate-700' },
+            { id: 'class', labelHiragana: 'じゅぎょう', labelKanji: '授業', color: 'bg-blue-500 text-white' },
+            { id: 'school', labelHiragana: 'がっこう', labelKanji: '学校生活', color: 'bg-emerald-500 text-white' },
+            { id: 'prep', labelHiragana: 'したく', labelKanji: '支度', color: 'bg-cyan-500 text-white' },
+            { id: 'event', labelHiragana: 'ぎょうじ', labelKanji: '行事・特別', color: 'bg-orange-500 text-white' },
+            { id: 'home', labelHiragana: 'かてい', labelKanji: '家庭', color: 'bg-purple-500 text-white' }
+        ];
+
+        // カードマスターデータ
+        const CARDS_DATA = [
+            // 授業 (class)
+            { id: 'c1', category: 'class', hiragana: 'こくご', kanji: '国語', icon: 'fa-book-open', color: 'border-blue-400 text-blue-500 bg-blue-50' },
+            { id: 'c2', category: 'class', hiragana: 'さんすう', kanji: '算数', icon: 'fa-calculator', color: 'border-blue-400 text-blue-500 bg-blue-50' },
+            { id: 'c3', category: 'class', hiragana: 'せいかつ', kanji: '生活', icon: 'fa-seedling', color: 'border-blue-400 text-green-500 bg-blue-50' },
+            { id: 'c4', category: 'class', hiragana: 'おんがく', kanji: '音楽', icon: 'fa-music', color: 'border-blue-400 text-purple-500 bg-blue-50' },
+            { id: 'c5', category: 'class', hiragana: 'ずこう', kanji: '図工', icon: 'fa-palette', color: 'border-blue-400 text-pink-500 bg-blue-50' },
+            { id: 'c6', category: 'class', hiragana: 'たいいく', kanji: '体育', icon: 'fa-person-running', color: 'border-blue-400 text-orange-500 bg-blue-50' },
+            { id: 'c7', category: 'class', hiragana: 'りか', kanji: '理科', icon: 'fa-microscope', color: 'border-blue-400 text-teal-500 bg-blue-50' },
+            { id: 'c8', category: 'class', hiragana: 'しゃかい', kanji: '社会', icon: 'fa-earth-asia', color: 'border-blue-400 text-amber-600 bg-blue-50' },
+            { id: 'c9', category: 'class', hiragana: 'えいご', kanji: '英語', icon: 'fa-language', color: 'border-blue-400 text-indigo-500 bg-blue-50' },
+            { id: 'c10', category: 'class', hiragana: 'どうとく', kanji: '道徳', icon: 'fa-heart', color: 'border-blue-400 text-rose-500 bg-blue-50' },
+            { id: 'c11', category: 'class', hiragana: 'しょしゃ', kanji: '書写', icon: 'fa-pen-nib', color: 'border-blue-400 text-slate-700 bg-blue-50' },
+            { id: 'c12', category: 'class', hiragana: 'そうごう', kanji: '総合', icon: 'fa-magnifying-glass', color: 'border-blue-400 text-blue-600 bg-blue-50' },
+
+            // 学校生活 (school)
+            { id: 's1', category: 'school', hiragana: 'とうこう', kanji: '登校', icon: 'fa-school', color: 'border-emerald-400 text-emerald-600 bg-emerald-50' },
+            { id: 's2', category: 'school', hiragana: 'あさのかい', kanji: '朝の会', icon: 'fa-sun', color: 'border-emerald-400 text-amber-500 bg-emerald-50' },
+            { id: 's3', category: 'school', hiragana: 'やすみじかん', kanji: '休み時間', icon: 'fa-futbol', color: 'border-emerald-400 text-blue-500 bg-emerald-50' },
+            { id: 's4', category: 'school', hiragana: 'きゅうしょく', kanji: '給食', icon: 'fa-utensils', color: 'border-emerald-400 text-red-500 bg-emerald-50' },
+            { id: 's5', category: 'school', hiragana: 'はみがき', kanji: '歯みがき', icon: 'fa-tooth', color: 'border-emerald-400 text-cyan-500 bg-emerald-50' },
+            { id: 's6', category: 'school', hiragana: 'そうじ', kanji: '掃除', icon: 'fa-broom', color: 'border-emerald-400 text-amber-700 bg-emerald-50' },
+            { id: 's7', category: 'school', hiragana: 'かえりのかい', kanji: '帰りの会', icon: 'fa-cloud-sun', color: 'border-emerald-400 text-orange-400 bg-emerald-50' },
+            { id: 's8', category: 'school', hiragana: 'げこう', kanji: '下校', icon: 'fa-house-chimney-user', color: 'border-emerald-400 text-indigo-600 bg-emerald-50' },
+
+            // したく (prep)
+            { id: 'p1', category: 'prep', hiragana: 'あさのしたく', kanji: '朝の支度', icon: 'fa-backpack', color: 'border-cyan-400 text-cyan-600 bg-cyan-50' },
+            { id: 'p2', category: 'prep', hiragana: 'きがえ', kanji: '着替え', icon: 'fa-shirt', color: 'border-cyan-400 text-indigo-500 bg-cyan-50' },
+            { id: 'p3', category: 'prep', hiragana: 'かえりのしたく', kanji: '帰りの支度', icon: 'fa-box-archive', color: 'border-cyan-400 text-teal-600 bg-cyan-50' },
+
+            // 行事・特別 (event)
+            { id: 'e1', category: 'event', hiragana: 'しゅうかい', kanji: '集会', icon: 'fa-users', color: 'border-orange-400 text-orange-600 bg-orange-50' },
+            { id: 'e2', category: 'event', hiragana: '避難くんれん', kanji: '避難訓練', icon: 'fa-person-walking-dashed-line-arrow-right', color: 'border-orange-400 text-red-600 bg-orange-50' },
+            { id: 'e3', category: 'event', hiragana: 'しんだんそくてい', kanji: '身体測定', icon: 'fa-ruler-vertical', color: 'border-orange-400 text-blue-600 bg-orange-50' },
+
+            // 家庭 (home)
+            { id: 'h1', category: 'home', hiragana: 'しゅくだい', kanji: '宿題', icon: 'fa-pen-to-square', color: 'border-purple-400 text-purple-600 bg-purple-50' },
+            { id: 'h2', category: 'home', hiragana: 'おやつ', kanji: 'おやつ', icon: 'fa-cookie-bite', color: 'border-purple-400 text-amber-600 bg-purple-50' },
+            { id: 'h3', category: 'home', hiragana: 'おふろ', kanji: 'お風呂', icon: 'fa-bath', color: 'border-purple-400 text-blue-500 bg-purple-50' },
+            { id: 'h4', category: 'home', hiragana: 'ねる', kanji: '就寝', icon: 'fa-bed', color: 'border-purple-400 text-indigo-700 bg-purple-50' }
+        ];
+
+        // 初期スケジュール例
+        const INITIAL_SCHEDULE = [
+            { cardId: 's1', time: '08:00', checked: false },
+            { cardId: 's2', time: '08:20', checked: false },
+            { cardId: 'c1', time: '08:45', checked: false },
+            { cardId: 'c2', time: '09:40', checked: false },
+            { cardId: 's3', time: '10:25', checked: false },
+            { cardId: 's4', time: '12:25', checked: false },
+            { cardId: 's5', time: '13:05', checked: false }
+        ];
+
+        // --- アプリケーション状態 ---
+        let currentMode = 'hiragana'; // 'hiragana' または 'kanji'
+        let currentCategory = 'all';
+        let schedule = [];
+
+        // --- DOM要素 ---
+        const cardGrid = document.getElementById('card-grid');
+        const categoryTabs = document.getElementById('category-tabs');
+        const scheduleList = document.getElementById('schedule-list');
+        const emptyState = document.getElementById('empty-state');
+        const btnHiragana = document.getElementById('btn-hiragana');
+        const btnKanji = document.getElementById('btn-kanji');
+        const currentDateEl = document.getElementById('current-date');
+        const itemCountEl = document.getElementById('item-count');
+
+        // --- 初期化 ---
+        function init() {
+            // 日付表示
+            updateDateDisplay();
+
+            // ローカルストレージまたは初期化データの読み込み
+            const savedSchedule = localStorage.getItem('my_schedule');
+            if (savedSchedule) {
+                try {
+                    schedule = JSON.parse(savedSchedule);
+                } catch(e) {
+                    schedule = [...INITIAL_SCHEDULE];
+                }
+            } else {
+                schedule = [...INITIAL_SCHEDULE];
+            }
+
+            // イベントリスナー設定
+            setupEventListeners();
+
+            // レンダリング
+            renderCategories();
+            renderCards();
+            renderSchedule();
+        }
+
+        // 時間（HH:MM）に応じたアナログ時計のSVG文字列を生成する関数
+        function generateClockSvg(timeStr) {
+            let hour = 12;
+            let minute = 0;
+            if (timeStr && timeStr.includes(':')) {
+                const parts = timeStr.split(':');
+                hour = parseInt(parts[0], 10) % 12;
+                minute = parseInt(parts[1], 10) || 0;
+            }
+
+            // 角度計算
+            const minuteAngle = minute * 6; // 1分で6度
+            const hourAngle = (hour * 30) + (minute * 0.5); // 1時間で30度 + 分による補正
+
+            return `
+                <svg class="w-6 h-6 text-slate-700 shrink-0" viewBox="0 0 100 100">
+                    <!-- 時計の枠 -->
+                    <circle cx="50" cy="50" r="45" fill="white" stroke="currentColor" stroke-width="7"/>
+                    <!-- 文字盤の点（12, 3, 6, 9時） -->
+                    <circle cx="50" cy="12" r="3" fill="currentColor"/>
+                    <circle cx="88" cy="50" r="3" fill="currentColor"/>
+                    <circle cx="50" cy="88" r="3" fill="currentColor"/>
+                    <circle cx="12" cy="50" r="3" fill="currentColor"/>
+                    <!-- 短針 (時針) -->
+                    <line x1="50" y1="50" x2="50" y2="25" stroke="currentColor" stroke-width="8" stroke-linecap="round"
+                        transform="rotate(${hourAngle} 50 50)"/>
+                    <!-- 長針 (分針) -->
+                    <line x1="50" y1="50" x2="50" y2="15" stroke="#ef4444" stroke-width="5" stroke-linecap="round"
+                        transform="rotate(${minuteAngle} 50 50)"/>
+                    <!-- 中心軸 -->
+                    <circle cx="50" cy="50" r="4" fill="currentColor"/>
+                </svg>
+            `;
+        }
+
+        // --- 日付のセット ---
+        function updateDateDisplay() {
+            const now = new Date();
+            const month = now.getMonth() + 1;
+            const date = now.getDate();
+            const days = ['にち', 'げつ', 'か', 'すい', 'もく', 'きん', 'ど'];
+            const dayStr = days[now.getDay()];
+
+            currentDateEl.textContent = `${month}がつ${date}にち(${dayStr})`;
+        }
+
+        // --- イベントリスナー設定 ---
+        function setupEventListeners() {
+            // ひらがな / 漢字 切り替え
+            btnHiragana.addEventListener('click', () => setMode('hiragana'));
+            btnKanji.addEventListener('click', () => setMode('kanji'));
+
+            // さいしょからリセット
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                if (confirm('よていを さいしょの状態に もどしますか？')) {
+                    schedule = [...INITIAL_SCHEDULE];
+                    saveAndRender();
+                }
+            });
+
+            // 印刷
+            document.getElementById('print-btn').addEventListener('click', () => {
+                window.print();
+            });
+
+            // カスタムカード追加
+            document.getElementById('custom-card-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const titleInput = document.getElementById('custom-title');
+                const iconSelect = document.getElementById('custom-icon');
+
+                const newCard = {
+                    id: 'custom_' + Date.now(),
+                    category: 'class',
+                    hiragana: titleInput.value,
+                    kanji: titleInput.value,
+                    icon: iconSelect.value,
+                    color: 'border-slate-400 text-slate-700 bg-slate-50'
+                };
+
+                CARDS_DATA.push(newCard);
+                titleInput.value = '';
+                renderCards();
+                
+                // 作成したカードを直接スケジュールに追加
+                addToSchedule(newCard.id);
+            });
+        }
+
+        // --- 表記モード変更 ---
+        function setMode(mode) {
+            currentMode = mode;
+            if (mode === 'hiragana') {
+                btnHiragana.className = 'px-3 py-1.5 rounded-lg bg-blue-600 text-white shadow-sm transition';
+                btnKanji.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
+            } else {
+                btnKanji.className = 'px-3 py-1.5 rounded-lg bg-blue-600 text-white shadow-sm transition';
+                btnHiragana.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
+            }
+            renderCategories();
+            renderCards();
+            renderSchedule();
+        }
+
+        // --- カテゴリタブ描画 ---
+        function renderCategories() {
+            categoryTabs.innerHTML = CATEGORIES.map(cat => {
+                const label = currentMode === 'hiragana' ? cat.labelHiragana : cat.labelKanji;
+                const isActive = currentCategory === cat.id;
+                const activeClass = isActive 
+                    ? 'ring-2 ring-offset-1 ring-blue-500 font-extrabold shadow-sm' 
+                    : 'opacity-70 hover:opacity-100';
+
+                return `
+                    <button 
+                        onclick="selectCategory('${cat.id}')"
+                        class="px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all flex items-center gap-1 font-bold ${cat.color} ${activeClass}">
+                        ${label}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function selectCategory(catId) {
+            currentCategory = catId;
+            renderCategories();
+            renderCards();
+        }
+
+        // --- カードグリッド描画 ---
+        function renderCards() {
+            const filteredCards = currentCategory === 'all' 
+                ? CARDS_DATA 
+                : CARDS_DATA.filter(c => c.category === currentCategory);
+
+            cardGrid.innerHTML = filteredCards.map(card => {
+                const title = currentMode === 'hiragana' ? card.hiragana : card.kanji;
+                return `
+                    <button 
+                        onclick="addToSchedule('${card.id}')"
+                        class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 ${card.color} hover:scale-105 active:scale-95 transition-all shadow-sm hover:shadow group bg-white text-center h-24">
+                        <i class="fa-solid ${card.icon} text-2xl mb-1.5 group-hover:bounce"></i>
+                        <span class="text-xs font-bold leading-tight line-clamp-2">${title}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        // --- スケジュール追加 ---
+        function addToSchedule(cardId) {
+            // 直前の時間を参考にデフォルト時間を推測設定
+            let defaultTime = "09:00";
+            if (schedule.length > 0) {
+                const lastTime = schedule[schedule.length - 1].time;
+                if (lastTime) {
+                    const [h, m] = lastTime.split(':').map(Number);
+                    let newM = m + 45;
+                    let newH = h;
+                    if (newM >= 60) {
+                        newH = (h + 1) % 24;
+                        newM = newM % 60;
+                    }
+                    defaultTime = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+                }
+            }
+
+            schedule.push({
+                cardId: cardId,
+                time: defaultTime,
+                checked: false
+            });
+
+            saveAndRender();
+        }
+
+        // --- スケジュール一覧描画 ---
+        function renderSchedule() {
+            if (schedule.length === 0) {
+                scheduleList.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                itemCountEl.textContent = 'ぜんぶで 0 こ';
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            itemCountEl.textContent = `ぜんぶで ${schedule.length} こ`;
+
+            scheduleList.innerHTML = schedule.map((item, index) => {
+                const card = CARDS_DATA.find(c => c.id === item.cardId) || {
+                    hiragana: 'カスタム',
+                    kanji: 'カスタム',
+                    icon: 'fa-star',
+                    color: 'border-slate-300 text-slate-600 bg-slate-50'
+                };
+
+                const title = currentMode === 'hiragana' ? card.hiragana : card.kanji;
+                const isChecked = item.checked ? 'checked' : '';
+                const clockSvg = generateClockSvg(item.time);
+
+                return `
+                    <div class="flex items-center gap-2 p-2.5 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow transition ${item.checked ? 'bg-slate-50 opacity-60' : ''}">
+                        
+                        <!-- 左側カテゴリカラーのワンポイント -->
+                        <div class="w-2 h-10 rounded-full ${card.color.split(' ')[0].replace('border', 'bg')}"></div>
+
+                        <!-- アイコン & なまえ -->
+                        <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                            <div class="w-10 h-10 rounded-xl ${card.color} flex items-center justify-center shrink-0">
+                                <i class="fa-solid ${card.icon} text-lg"></i>
+                            </div>
+                            <span class="font-bold text-sm md:text-base text-slate-800 truncate ${item.checked ? 'line-through text-slate-400' : ''}">
+                                ${title}
+                            </span>
+                        </div>
+
+                        <!-- じかん入力 (動的アナログ時計SVG付き) -->
+                        <div class="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-xl shrink-0 border border-slate-200">
+                            ${clockSvg}
+                            <input 
+                                type="time" 
+                                value="${item.time}" 
+                                onchange="updateTime(${index}, this.value)"
+                                class="bg-transparent font-bold text-xs md:text-sm text-slate-700 focus:outline-none cursor-pointer">
+                        </div>
+
+                        <!-- チェックボックス -->
+                        <label class="shrink-0 p-1 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                ${isChecked} 
+                                onchange="toggleCheck(${index})"
+                                class="w-6 h-6 rounded-lg text-emerald-500 focus:ring-emerald-400 cursor-pointer accent-emerald-500">
+                        </label>
+
+                        <!-- 並び替え・削除ボタン（印刷非表示） -->
+                        <div class="no-print flex items-center gap-0.5 shrink-0 border-l border-slate-100 pl-1">
+                            <button onclick="moveItem(${index}, -1)" ${index === 0 ? 'disabled class="opacity-20"' : ''} class="p-1 text-slate-400 hover:text-slate-600">
+                                <i class="fa-solid fa-chevron-up text-xs"></i>
+                            </button>
+                            <button onclick="moveItem(${index}, 1)" ${index === schedule.length - 1 ? 'disabled class="opacity-20"' : ''} class="p-1 text-slate-400 hover:text-slate-600">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </button>
+                            <button onclick="removeItem(${index})" class="p-1 text-rose-400 hover:text-rose-600 ml-1">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- スケジュール操作関数 ---
+        function updateTime(index, newTime) {
+            schedule[index].time = newTime;
+            saveAndRender(true);
+        }
+
+        function toggleCheck(index) {
+            schedule[index].checked = !schedule[index].checked;
+            saveAndRender();
+        }
+
+        function removeItem(index) {
+            schedule.splice(index, 1);
+            saveAndRender();
+        }
+
+        function moveItem(index, direction) {
+            const targetIndex = index + direction;
+            if (targetIndex < 0 || targetIndex >= schedule.length) return;
+            
+            const temp = schedule[index];
+            schedule[index] = schedule[targetIndex];
+            schedule[targetIndex] = temp;
+            
+            saveAndRender();
+        }
+
+        // --- 保存 & 再描画 ---
+        function saveAndRender(reRender = true) {
+            localStorage.setItem('my_schedule', JSON.stringify(schedule));
+            if (reRender) {
+                renderSchedule();
+            }
+        }
+
+        // アプリ起動
+        window.onload = init;
+    </script>
+</body>
+</html>
